@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Peta Jalan Aman</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <style>
+    body, html { margin:0; padding:0; height:100%; font-family: Arial, sans-serif; }
+    #map { height: 100%; width: 100%; }
+    
+    .search-container {
+      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; display: flex; flex-direction: column; align-items: center;
+      width: 90%; max-width: 420px;
+    }
+    .search-box {
+      display: flex; width: 100%; background: white; border-radius: 25px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2); overflow: hidden;
+    }
+    .search-box input {
+      flex: 1; padding: 10px 15px; border: none; outline: none; font-size: 14px;
+    }
+    .search-box button {
+      padding: 10px 15px; border: none; background: #1976d2; color: white;
+      cursor: pointer; transition: background 0.3s;
+    }
+    .search-box button:hover { background: #0d47a1; }
+    
+    .results {
+      width: 100%; background: white; margin-top: 6px; border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2); max-height: 260px; overflow-y: auto;
+    }
+    .results div { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+    .results div:hover { background: #f5f5f5; }
+    
+    .popup-btn {
+      display: inline-block; margin-top: 6px; padding: 6px 10px; background: #1976d2;
+      color: white; border: none; border-radius: 6px; cursor: pointer; text-align: center; font-size: 13px;
+    }
+    .popup-btn:hover { background: #0d47a1; }
+    .popup-textarea {
+      width: 100%; resize: none; margin-top: 6px; padding: 6px; border-radius: 5px;
+      border: 1px solid #ddd; font-size: 13px; box-sizing: border-box;
+    }
+    .popup-list { margin: 6px 0; padding-left: 18px; max-height: 120px; overflow-y: auto; }
+    .popup-muted { color: #666; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="search-container">
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Cari jalan, tempat, atau gedung..." />
+      <button onclick="searchLocation()">Cari</button>
+    </div>
+    <div class="results" id="results"></div>
+  </div>
+  
+  <div id="map"></div>
+  
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+  
+  <script>
+    // ===== Map setup =====
+    const map = L.map('map').setView([-6.2, 106.816666], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // ===== State =====
+    const markers = [];
+    let tempStart = null; // temporary storage before user clicks End
+    const routes = [];    // store completed routes (each has start, end, control/polyline)
+    
+    
+    // ===== Helpers =====
+    function escapeHtml(str) {
+      return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+    }
+    
+    function approxEqualsLatLng(a, b, eps = 1e-6) {
+      return Math.abs(a.lat - b.lat) < eps && Math.abs(a.lng - b.lng) < eps;
+    }
+    
+    // ===== Marker + Popup =====
+    function placeMarker(lat, lon, name = "Lokasi terpilih") {
+      const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+      marker.reports = [];
+      marker.placeName = name;
+      
+      marker.on('dragend', () => {
+        if (marker === startMarker || marker === endMarker) {
+          drawRoute();
+        }
+      });
+      
+      marker.on("click", () => showPopup(marker));
+      
+      markers.push(marker);
+      map.setView([lat, lon], 16);
+      showPopup(marker);
+    }
+    
+    function showPopup(marker) {
+      const listHtml = marker.reports.length
+      ? `<ul class="popup-list">${marker.reports.map((r) => `<li>${escapeHtml(r)}</li>`).join("")}</ul>`
+      : `<div class="popup-muted">Belum ada laporan</div>`;
+      
+      const textareaId = `reportText-${marker._leaflet_id}`;
+      const saveBtnId  = `saveBtn-${marker._leaflet_id}`;
+      const startBtnId = `startBtn-${marker._leaflet_id}`;
+      const endBtnId   = `endBtn-${marker._leaflet_id}`;
+      
+      const html = `
+      <b>${escapeHtml(marker.placeName)}</b><br/>
+      <b>Laporan:</b>
+      ${listHtml}
+      <textarea id="${textareaId}" rows="3" class="popup-textarea" placeholder="Tulis laporan..."></textarea>
+      <br/>
+      <button class="popup-btn" id="${saveBtnId}">Simpan Laporan</button>
+      <button class="popup-btn" id="${startBtnId}">Set as Start</button>
+      <button class="popup-btn" id="${endBtnId}">Set as End</button>
+    `;
+      
+      marker.off("popupopen");
+      marker.on("popupopen", () => {
+        const ta = document.getElementById(textareaId);
+        const saveBtn  = document.getElementById(saveBtnId);
+        const startBtn = document.getElementById(startBtnId);
+        const endBtn   = document.getElementById(endBtnId);
+        
+        if (saveBtn) {
+          saveBtn.onclick = () => {
+            const text = (ta?.value || "").trim();
+            if (!text) { alert("Harap isi laporan terlebih dahulu."); return; }
+            marker.reports.push(text);
+            showPopup(marker); // refresh
+          };
+        }
+        
+        if (startBtn) {
+          startBtn.onclick = () => {
+            tempStart = marker; // remember start
+            alert("Start ditetapkan. Sekarang pilih End.");
+            marker.closePopup();
+          };
+        }
+        
+        if (endBtn) {
+          endBtn.onclick = () => {
+            if (!tempStart) {
+              alert("Pilih Start dulu sebelum End.");
+              return;
+            }
+            const start = tempStart;
+            const end = marker;
+            drawRoute(start, end);
+            tempStart = null; // reset after one full route is drawn
+            marker.closePopup();
+          };
+        }
+        
+      });
+      
+      marker.bindPopup(html);
+      marker.openPopup();
+    }
+    
+    // ===== Routing =====
+    function drawRoute(startMarker, endMarker) {
+      const s = startMarker.getLatLng();
+      const e = endMarker.getLatLng();
+      if (approxEqualsLatLng(s, e)) return;
+      
+      const control = L.Routing.control({
+        waypoints: [ s, e ],
+        lineOptions: { styles: [{ color: "red", weight: 4 }] },
+        createMarker: () => null,
+        router: new L.Routing.OSRMv1({
+          serviceUrl: "https://router.project-osrm.org/route/v1"
+        }),
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false
+      }).addTo(map);
+      
+      routes.push({ start: startMarker, end: endMarker, control });
+      
+      control.on('routingerror', () => {
+        map.removeControl(control);
+        const poly = L.polyline([s, e], { color: 'red', weight: 4 }).addTo(map);
+        routes.push({ start: startMarker, end: endMarker, control: poly });
+      });
+    }
+    
+    
+    
+    // ===== Map click -> add marker =====
+    map.on("click", (e) => {
+      placeMarker(e.latlng.lat, e.latlng.lng, "Lokasi dipilih manual");
+    });
+    
+    // ===== Search =====
+    async function searchLocation() {
+      const query = document.getElementById("search").value.trim();
+      if (!query) return;
+      
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=8`;
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "";
+      
+      if (!Array.isArray(data) || data.length === 0) {
+        resultsDiv.innerHTML = "<div>Tidak ada hasil</div>";
+        return;
+      }
+      
+      data.forEach(place => {
+        const div = document.createElement("div");
+        div.textContent = place.display_name;
+        div.onclick = () => {
+          const lat = parseFloat(place.lat);
+          const lon = parseFloat(place.lon);
+          placeMarker(lat, lon, place.display_name);
+          resultsDiv.innerHTML = "";
+        };
+        resultsDiv.appendChild(div);
+      });
+    }
+  </script>
+  
+</body>
+</html>
