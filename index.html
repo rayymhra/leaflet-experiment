@@ -70,7 +70,7 @@
     }).addTo(map);
     
     // ===== State =====
-    const markers = [];
+    let markers = [];
     let tempStart = null; // temporary storage before user clicks End
     const routes = [];    // store completed routes (each has start, end, control/polyline)
     
@@ -106,6 +106,18 @@
       markers.push(marker);
       map.setView([lat, lon], 16);
       showPopup(marker);
+      
+      // Auto-remove if popup closed with no report/start/end
+      marker.on("popupclose", () => {
+        if (
+        (!marker.reports || marker.reports.length === 0) && // no reports
+        !routes.some(r => r.start === marker || r.end === marker) && // not part of any route
+        marker !== tempStart 
+        ) {
+          map.removeLayer(marker);
+          markers = markers.filter(m => m !== marker);
+        }
+      });
     }
     
     function showPopup(marker) {
@@ -148,6 +160,7 @@
         if (startBtn) {
           startBtn.onclick = () => {
             tempStart = marker; // remember start
+            marker.dragging.disable(); // disable dragging for Start
             alert("Start ditetapkan. Sekarang pilih End.");
             marker.closePopup();
           };
@@ -161,11 +174,13 @@
             }
             const start = tempStart;
             const end = marker;
+            end.dragging.disable(); // disable dragging for End
             drawRoute(start, end);
             tempStart = null; // reset after one full route is drawn
             marker.closePopup();
           };
         }
+        
         
       });
       
