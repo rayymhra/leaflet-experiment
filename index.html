@@ -1,258 +1,673 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Peta Jalan Aman</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
-  <style>
-    body, html { margin:0; padding:0; height:100%; font-family: Arial, sans-serif; }
-    #map { height: 100%; width: 100%; }
-    
-    .search-container {
-      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-      z-index: 1000; display: flex; flex-direction: column; align-items: center;
-      width: 90%; max-width: 420px;
-    }
-    .search-box {
-      display: flex; width: 100%; background: white; border-radius: 25px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2); overflow: hidden;
-    }
-    .search-box input {
-      flex: 1; padding: 10px 15px; border: none; outline: none; font-size: 14px;
-    }
-    .search-box button {
-      padding: 10px 15px; border: none; background: #1976d2; color: white;
-      cursor: pointer; transition: background 0.3s;
-    }
-    .search-box button:hover { background: #0d47a1; }
-    
-    .results {
-      width: 100%; background: white; margin-top: 6px; border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2); max-height: 260px; overflow-y: auto;
-    }
-    .results div { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
-    .results div:hover { background: #f5f5f5; }
-    
-    .popup-btn {
-      display: inline-block; margin-top: 6px; padding: 6px 10px; background: #1976d2;
-      color: white; border: none; border-radius: 6px; cursor: pointer; text-align: center; font-size: 13px;
-    }
-    .popup-btn:hover { background: #0d47a1; }
-    .popup-textarea {
-      width: 100%; resize: none; margin-top: 6px; padding: 6px; border-radius: 5px;
-      border: 1px solid #ddd; font-size: 13px; box-sizing: border-box;
-    }
-    .popup-list { margin: 6px 0; padding-left: 18px; max-height: 120px; overflow-y: auto; }
-    .popup-muted { color: #666; font-style: italic; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Jalan Aman</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo i {
+            font-size: 1.8rem;
+            color: #3498db;
+        }
+        
+        .logo h1 {
+            font-size: 1.5rem;
+        }
+        
+        nav {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        nav button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        nav button:hover {
+            background-color: #34495e;
+        }
+        
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background-color: white;
+            padding: 1rem;
+            overflow-y: auto;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .filter-section {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        
+        .filter-section h3 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-options button {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            background-color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-options button.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .reports-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .report-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .report-type {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .crime { background-color: #ff7675; color: white; }
+        .accident { background-color: #fdcb6e; color: black; }
+        .hazard { background-color: #e17055; color: white; }
+        .safe_spot { background-color: #00b894; color: white; }
+        
+        .report-date {
+            color: #7f8c8d;
+            font-size: 0.8rem;
+        }
+        
+        .report-description {
+            margin-bottom: 0.5rem;
+            color: #2d3436;
+        }
+        
+        .report-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .report-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .report-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: color 0.3s;
+        }
+        
+        .report-actions button:hover {
+            color: #3498db;
+        }
+        
+        .report-likes {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: #7f8c8d;
+        }
+        
+        .add-report-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            transition: background-color 0.3s;
+        }
+        
+        .add-report-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .submit-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .submit-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40%;
+            }
+            
+            #map {
+                height: 60%;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="search-container">
-    <div class="search-box">
-      <input type="text" id="search" placeholder="Cari jalan, tempat, atau gedung..." />
-      <button onclick="searchLocation()">Cari</button>
+    <header>
+        <div class="logo">
+            <i class="fas fa-map-marked-alt"></i>
+            <h1>Peta Jalan Aman</h1>
+        </div>
+        <nav>
+            <button id="loginBtn">Masuk</button>
+            <button id="registerBtn">Daftar</button>
+        </nav>
+    </header>
+    
+    <div class="main-container">
+        <div class="map-container">
+            <div id="map"></div>
+            <button class="add-report-btn" id="addReportBtn">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar">
+            <div class="filter-section">
+                <h3>Filter Laporan</h3>
+                <div class="filter-options">
+                    <button class="active" data-type="all">Semua</button>
+                    <button data-type="crime">Kejahatan</button>
+                    <button data-type="accident">Kecelakaan</button>
+                    <button data-type="hazard">Bahaya</button>
+                    <button data-type="safe_spot">Titik Aman</button>
+                </div>
+            </div>
+            
+            <div class="reports-list">
+                <!-- Sample reports will be added here dynamically -->
+            </div>
+        </div>
     </div>
-    <div class="results" id="results"></div>
-  </div>
-  
-  <div id="map"></div>
-  
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
-  
-  <script>
-    // ===== Map setup =====
-    const map = L.map('map').setView([-6.2, 106.816666], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
     
-    // ===== State =====
-    let markers = [];
-    let tempStart = null; // temporary storage before user clicks End
-    const routes = [];    // store completed routes (each has start, end, control/polyline)
-    
-    
-    // ===== Helpers =====
-    function escapeHtml(str) {
-      return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-    }
-    
-    function approxEqualsLatLng(a, b, eps = 1e-6) {
-      return Math.abs(a.lat - b.lat) < eps && Math.abs(a.lng - b.lng) < eps;
-    }
-    
-    // ===== Marker + Popup =====
-    function placeMarker(lat, lon, name = "Lokasi terpilih") {
-      const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
-      marker.reports = [];
-      marker.placeName = name;
-      
-      marker.on('dragend', () => {
-        if (marker === startMarker || marker === endMarker) {
-          drawRoute();
-        }
-      });
-      
-      marker.on("click", () => showPopup(marker));
-      
-      markers.push(marker);
-      map.setView([lat, lon], 16);
-      showPopup(marker);
-      
-      // Auto-remove if popup closed with no report/start/end
-      marker.on("popupclose", () => {
-        if (
-        (!marker.reports || marker.reports.length === 0) && // no reports
-        !routes.some(r => r.start === marker || r.end === marker) && // not part of any route
-        marker !== tempStart 
-        ) {
-          map.removeLayer(marker);
-          markers = markers.filter(m => m !== marker);
-        }
-      });
-    }
-    
-    function showPopup(marker) {
-      const listHtml = marker.reports.length
-      ? `<ul class="popup-list">${marker.reports.map((r) => `<li>${escapeHtml(r)}</li>`).join("")}</ul>`
-      : `<div class="popup-muted">Belum ada laporan</div>`;
-      
-      const textareaId = `reportText-${marker._leaflet_id}`;
-      const saveBtnId  = `saveBtn-${marker._leaflet_id}`;
-      const startBtnId = `startBtn-${marker._leaflet_id}`;
-      const endBtnId   = `endBtn-${marker._leaflet_id}`;
-      
-      const html = `
-      <b>${escapeHtml(marker.placeName)}</b><br/>
-      <b>Laporan:</b>
-      ${listHtml}
-      <textarea id="${textareaId}" rows="3" class="popup-textarea" placeholder="Tulis laporan..."></textarea>
-      <br/>
-      <button class="popup-btn" id="${saveBtnId}">Simpan Laporan</button>
-      <button class="popup-btn" id="${startBtnId}">Set as Start</button>
-      <button class="popup-btn" id="${endBtnId}">Set as End</button>
-    `;
-      
-      marker.off("popupopen");
-      marker.on("popupopen", () => {
-        const ta = document.getElementById(textareaId);
-        const saveBtn  = document.getElementById(saveBtnId);
-        const startBtn = document.getElementById(startBtnId);
-        const endBtn   = document.getElementById(endBtnId);
+    <!-- Add Report Modal -->
+    <div class="modal" id="reportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Tambah Laporan Baru</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="reportForm">
+                <div class="form-group">
+                    <label for="reportType">Jenis Laporan</label>
+                    <select id="reportType" required>
+                        <option value="">Pilih Jenis Laporan</option>
+                        <option value="crime">Daerah Rawan Kejahatan</option>
+                        <option value="accident">Titik Rawan Kecelakaan</option>
+                        <option value="hazard">Bahaya di Jalan</option>
+                        <option value="safe_spot">Titik Aman</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reportDescription">Deskripsi</label>
+                    <textarea id="reportDescription" placeholder="Jelaskan secara detail kondisi di lokasi tersebut..." required></textarea>
+                </div>
+                <button type="submit" class="submit-btn">Kirim Laporan</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([-6.2088, 106.8456], 13); // Default to Jakarta
         
-        if (saveBtn) {
-          saveBtn.onclick = () => {
-            const text = (ta?.value || "").trim();
-            if (!text) { alert("Harap isi laporan terlebih dahulu."); return; }
-            marker.reports.push(text);
-            showPopup(marker); // refresh
-          };
-        }
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
         
-        if (startBtn) {
-          startBtn.onclick = () => {
-            tempStart = marker; // remember start
-            marker.dragging.disable(); // disable dragging for Start
-            alert("Start ditetapkan. Sekarang pilih End.");
-            marker.closePopup();
-          };
-        }
-        
-        if (endBtn) {
-          endBtn.onclick = () => {
-            if (!tempStart) {
-              alert("Pilih Start dulu sebelum End.");
-              return;
+        // Sample reports data
+        const reports = [
+            {
+                id: 1,
+                userId: 1,
+                latitude: -6.2088,
+                longitude: 106.8456,
+                type: 'crime',
+                description: 'Banyak pencopet berkeliaran di sekitar halte bus ini, terutama pada jam pulang kerja.',
+                photoUrl: null,
+                createdAt: '2023-10-15T14:30:00',
+                likes: 12,
+                dislikes: 2
+            },
+            {
+                id: 2,
+                userId: 2,
+                latitude: -6.2000,
+                longitude: 106.8500,
+                type: 'accident',
+                description: 'Tikungan tajam ini sudah menyebabkan beberapa kecelakaan, terutama saat hujan.',
+                photoUrl: null,
+                createdAt: '2023-10-14T09:15:00',
+                likes: 8,
+                dislikes: 1
+            },
+            {
+                id: 3,
+                userId: 3,
+                latitude: -6.1950,
+                longitude: 106.8400,
+                type: 'hazard',
+                description: 'Lubang besar di jalan yang belum diperbaiki selama berminggu-minggu.',
+                photoUrl: null,
+                createdAt: '2023-10-13T16:45:00',
+                likes: 15,
+                dislikes: 0
+            },
+            {
+                id: 4,
+                userId: 4,
+                latitude: -6.2100,
+                longitude: 106.8350,
+                type: 'safe_spot',
+                description: 'Pos polisi yang selalu aktif 24 jam, tempat aman untuk meminta bantuan.',
+                photoUrl: null,
+                createdAt: '2023-10-12T11:20:00',
+                likes: 20,
+                dislikes: 1
             }
-            const start = tempStart;
-            const end = marker;
-            end.dragging.disable(); // disable dragging for End
-            drawRoute(start, end);
-            tempStart = null; // reset after one full route is drawn
-            marker.closePopup();
-          };
+        ];
+        
+        // Icon definitions for different report types
+        const icons = {
+            crime: L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            }),
+            accident: L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            }),
+            hazard: L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            }),
+            safe_spot: L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            })
+        };
+        
+        // Add markers for each report
+        const markers = [];
+        reports.forEach(report => {
+            const marker = L.marker([report.latitude, report.longitude], {icon: icons[report.type]})
+                .addTo(map)
+                .bindPopup(`
+                    <div>
+                        <strong>${report.type.toUpperCase()}</strong>
+                        <p>${report.description}</p>
+                        <small>${new Date(report.createdAt).toLocaleDateString('id-ID')}</small>
+                    </div>
+                `);
+                
+            markers.push({
+                id: report.id,
+                marker: marker,
+                type: report.type
+            });
+        });
+        
+        // DOM Elements
+        const addReportBtn = document.getElementById('addReportBtn');
+        const reportModal = document.getElementById('reportModal');
+        const closeBtn = document.querySelector('.close-btn');
+        const reportForm = document.getElementById('reportForm');
+        const filterButtons = document.querySelectorAll('.filter-options button');
+        const reportsList = document.querySelector('.reports-list');
+        
+        // Event Listeners
+        addReportBtn.addEventListener('click', () => {
+            reportModal.style.display = 'flex';
+        });
+        
+        closeBtn.addEventListener('click', () => {
+            reportModal.style.display = 'none';
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === reportModal) {
+                reportModal.style.display = 'none';
+            }
+        });
+        
+        // Filter reports
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                button.classList.add('active');
+                
+                const filterType = button.getAttribute('data-type');
+                filterReports(filterType);
+            });
+        });
+        
+        // Handle form submission
+        reportForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const type = document.getElementById('reportType').value;
+            const description = document.getElementById('reportDescription').value;
+            
+            // Get current location (in a real app, this would be from GPS or map click)
+            const currentCenter = map.getCenter();
+            const newReport = {
+                id: reports.length + 1,
+                userId: 5, // Default user id
+                latitude: currentCenter.lat,
+                longitude: currentCenter.lng,
+                type: type,
+                description: description,
+                photoUrl: null,
+                createdAt: new Date().toISOString(),
+                likes: 0,
+                dislikes: 0
+            };
+            
+            // Add to reports array
+            reports.push(newReport);
+            
+            // Add marker to map
+            const marker = L.marker([newReport.latitude, newReport.longitude], {icon: icons[newReport.type]})
+                .addTo(map)
+                .bindPopup(`
+                    <div>
+                        <strong>${newReport.type.toUpperCase()}</strong>
+                        <p>${newReport.description}</p>
+                        <small>${new Date(newReport.createdAt).toLocaleDateString('id-ID')}</small>
+                    </div>
+                `);
+                
+            markers.push({
+                id: newReport.id,
+                marker: marker,
+                type: newReport.type
+            });
+            
+            // Add to reports list
+            addReportToDOM(newReport);
+            
+            // Close modal and reset form
+            reportModal.style.display = 'none';
+            reportForm.reset();
+            
+            alert('Laporan berhasil ditambahkan!');
+        });
+        
+        // Function to filter reports
+        function filterReports(type) {
+            // Filter markers on map
+            markers.forEach(marker => {
+                if (type === 'all' || marker.type === type) {
+                    map.addLayer(marker.marker);
+                } else {
+                    map.removeLayer(marker.marker);
+                }
+            });
+            
+            // Filter reports in list
+            const filteredReports = type === 'all' 
+                ? reports 
+                : reports.filter(report => report.type === type);
+                
+            // Clear current list
+            reportsList.innerHTML = '';
+            
+            // Add filtered reports to DOM
+            filteredReports.forEach(report => {
+                addReportToDOM(report);
+            });
         }
         
+        // Function to add report to DOM
+        function addReportToDOM(report) {
+            const reportCard = document.createElement('div');
+            reportCard.className = 'report-card';
+            
+            const typeLabels = {
+                crime: 'Kejahatan',
+                accident: 'Kecelakaan',
+                hazard: 'Bahaya',
+                safe_spot: 'Titik Aman'
+            };
+            
+            reportCard.innerHTML = `
+                <div class="report-header">
+                    <span class="report-type ${report.type}">${typeLabels[report.type]}</span>
+                    <span class="report-date">${new Date(report.createdAt).toLocaleDateString('id-ID')}</span>
+                </div>
+                <p class="report-description">${report.description}</p>
+                <div class="report-footer">
+                    <div class="report-actions">
+                        <button><i class="fas fa-thumbs-up"></i></button>
+                        <button><i class="fas fa-thumbs-down"></i></button>
+                        <button><i class="fas fa-comment"></i></button>
+                    </div>
+                    <div class="report-likes">
+                        <i class="fas fa-heart"></i>
+                        <span>${report.likes}</span>
+                    </div>
+                </div>
+            `;
+            
+            reportsList.appendChild(reportCard);
+        }
         
-      });
-      
-      marker.bindPopup(html);
-      marker.openPopup();
-    }
-    
-    // ===== Routing =====
-    function drawRoute(startMarker, endMarker) {
-      const s = startMarker.getLatLng();
-      const e = endMarker.getLatLng();
-      if (approxEqualsLatLng(s, e)) return;
-      
-      const control = L.Routing.control({
-        waypoints: [ s, e ],
-        lineOptions: { styles: [{ color: "red", weight: 4 }] },
-        createMarker: () => null,
-        router: new L.Routing.OSRMv1({
-          serviceUrl: "https://router.project-osrm.org/route/v1"
-        }),
-        addWaypoints: false,
-        draggableWaypoints: false,
-        fitSelectedRoutes: true,
-        show: false
-      }).addTo(map);
-      
-      routes.push({ start: startMarker, end: endMarker, control });
-      
-      control.on('routingerror', () => {
-        map.removeControl(control);
-        const poly = L.polyline([s, e], { color: 'red', weight: 4 }).addTo(map);
-        routes.push({ start: startMarker, end: endMarker, control: poly });
-      });
-    }
-    
-    
-    
-    // ===== Map click -> add marker =====
-    map.on("click", (e) => {
-      placeMarker(e.latlng.lat, e.latlng.lng, "Lokasi dipilih manual");
-    });
-    
-    // ===== Search =====
-    async function searchLocation() {
-      const query = document.getElementById("search").value.trim();
-      if (!query) return;
-      
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=8`;
-      const res = await fetch(url);
-      const data = await res.json();
-      
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = "";
-      
-      if (!Array.isArray(data) || data.length === 0) {
-        resultsDiv.innerHTML = "<div>Tidak ada hasil</div>";
-        return;
-      }
-      
-      data.forEach(place => {
-        const div = document.createElement("div");
-        div.textContent = place.display_name;
-        div.onclick = () => {
-          const lat = parseFloat(place.lat);
-          const lon = parseFloat(place.lon);
-          placeMarker(lat, lon, place.display_name);
-          resultsDiv.innerHTML = "";
-        };
-        resultsDiv.appendChild(div);
-      });
-    }
-  </script>
-  
+        // Initialize reports list
+        reports.forEach(report => {
+            addReportToDOM(report);
+        });
+        
+        // Try to get user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    
+                    // Set map view to user's location
+                    map.setView([userLat, userLng], 15);
+                    
+                    // Add user marker
+                    L.marker([userLat, userLng])
+                        .addTo(map)
+                        .bindPopup('Lokasi Anda Saat Ini')
+                        .openPopup();
+                },
+                (error) => {
+                    console.log('Geolocation error:', error);
+                }
+            );
+        }
+    </script>
 </body>
 </html>
